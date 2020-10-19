@@ -45,8 +45,15 @@ class LangBPFProducer():
     def producer(self):
         print(self.attached_bpf)
         for v in self.attached_bpf:
-            print(v)
-            [print(v['bpf']) for bpf in v]
+            for key in v:
+              for processWithBPF in v[key]:
+                for prog in processWithBPF
+                    print(
+                        processWithBPF[prog]["times"].items(), 
+                        processWithBPF[prog]["systimes"].items(),
+                    )
+                    processWithBPF[prog]["times"].clear()
+                    processWithBPF[prog]["systimes"].clear()
                 
 
        
