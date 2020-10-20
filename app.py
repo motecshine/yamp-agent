@@ -2,7 +2,7 @@ import argparse
 from bcc import BPF
 from configparser import ConfigParser
 from bpf import lang
-
+import queue
 """
     parsing config file
 """
@@ -12,7 +12,8 @@ def load_config(path="./conf/bcc.yaml"):
     return config
 
 if __name__ == '__main__':
-    lbp = lang.LangBPFProducer(load_config())
+    q = queue.Queue()
+    lbp = lang.LangBPFProducer(load_config(), q)
     lbp.gen_prog()
     lbp.run()
     
