@@ -24,7 +24,7 @@ class LangBPFProducer():
             self.process.append({
                 lang: pids
             })
-
+            usdts = []
             for pid in pids:
                 program = self.render(
                     prog=c['prog'], 
@@ -32,38 +32,23 @@ class LangBPFProducer():
                     read_class=c['read_class'], 
                     read_method=c['read_method'],
                 )
-                print(program)
+                
                 usdt = USDT(pid=pid)
                 usdt.enable_probe_or_bail(c['entry_probe'], 'trace_entry')
                 usdt.enable_probe_or_bail(c['return_probe'], 'trace_return')
-                self.bpf.append({
-                    pid: BPF(text=program, usdt_contexts=[usdt])
-                })
-            
+                usdts.append(usdt)
+
+            print(usdts)    
+            bpf = {
+                pid: BPF(text=program, usdt_contexts=[usdts]),
+            }
             self.attached_bpf.append({
-                lang: self.bpf,
+                lang: bpf
             })
 
     def producer(self):
         for v in self.attached_bpf:
-            for key in v:
-              for processWithBPF in v[key]:
-                for prog in processWithBPF:
-                    times = list(map(lambda kv: (kv[0].clazz.decode('utf-8', 'replace') \
-                                    + "." + \
-                                    kv[0].method.decode('utf-8', 'replace'),
-                                   (kv[1].num_calls, kv[1].total_ns)),
-                            processWithBPF[prog]["times"].items()))
-                    syscalls =  map(lambda kv: (syscall_name(kv[0].value).decode('utf-8', 'replace'),
-                                       (kv[1].num_calls, kv[1].total_ns)),
-                            processWithBPF[prog]["systimes"].items())
-                    print(
-                        times, 
-                        list(syscalls)
-                    )
-                    processWithBPF[prog]["times"].clear()
-                    processWithBPF[prog]["systimes"].clear()
-                    processWithBPF[prog]["counts"].clear()
+           print(v)
                 
 
        
