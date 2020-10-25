@@ -12,6 +12,7 @@ class LangBPFProducer():
         self.config = config
         self.scheduler = sched.scheduler(time.time, time.sleep)
         self.queue = queue
+  
     def gen_prog(self):
         for lang, _ in self.config.items():
             c = self.config[lang]
@@ -32,27 +33,20 @@ class LangBPFProducer():
                     read_class=c['read_class'], 
                     read_method=c['read_method'],
                 )
-                
                 usdt = USDT(pid=pid)
                 usdt.enable_probe_or_bail(c['entry_probe'], 'trace_entry')
                 usdt.enable_probe_or_bail(c['return_probe'], 'trace_return')
                 usdts.append(usdt)
-
-            print(usdts)    
-            bpf = {
-                pid: BPF(text=program, usdt_contexts=[usdts]),
-            }
-            self.attached_bpf.append({
-                lang: bpf
-            })
+            if len(usdts) > 0:
+                self.attached_bpf.append({
+                    lang:  BPF(text=program, usdt_contexts=usdts)
+                })
+    
 
     def producer(self):
-        for v in self.attached_bpf:
-           print(v)
+        for bpf_collections in self.attached_bpf:
+            self.queue.put_nowait(bpf_collections)
                 
-
-       
-
     def render(self, prog, pid, read_class, read_method):
         prog = open(prog, 'r').read()
         return prog.replace("READ_CLASS", read_class) \
