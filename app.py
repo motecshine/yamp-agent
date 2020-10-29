@@ -16,31 +16,14 @@ def load_config(path="./conf/bcc.yaml"):
 
 def start_bpf_producer(queue: queue.Queue):
     logging.info("start producer")
-    lbp = lang.LangBPFProducer(load_config(), queue)
-    lbp.gen_prog()
-    lbp.run()
+    lang.LangBPFProducer(load_config(), queue).run()
 
 def start_bpf_consumer(queue: queue.Queue):
     logging.info("start consumer")
     while True:
         collection = queue.get()
-        for lang, bpf in collection.items():
-            data = list(map(lambda kv: (kv[0].clazz.decode('utf-8', 'replace') \
-                                    + "." + \
-                                    kv[0].method.decode('utf-8', 'replace'),
-                                   (kv[1].num_calls, kv[1].total_ns)), bpf["times"].items()))
-            for k, v in data:
-                term = {
-                    lang: {
-                        'function': k,
-                        'call_count': v[0],
-                        'call_time_avg': (v[1]/1000000.0)/v[0],
-                        'call_time_total': (v[1]/1000000.0),
-                    }
-                }        
-                print(term)
-            bpf['systimes'].clear()
-            bpf['times'].clear()
+        print(collection)        
+
 if __name__ == '__main__':
     queue = queue.Queue()
     producer = threading.Thread(name="bpf_producer_worker", target=start_bpf_producer, args=[queue,])
@@ -48,4 +31,5 @@ if __name__ == '__main__':
 
     producer.start()
     consumer.start()
+   
 

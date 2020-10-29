@@ -1,7 +1,11 @@
-from bcc import BPF, USDT, utils
+import sched
+import time
 from subprocess import check_output
-import sched, time
+
+from bcc import BPF, USDT, utils
 from bcc.syscall import syscall_name
+
+
 class LangBPFProducer():
     process = []
     usdt = []
@@ -45,7 +49,33 @@ class LangBPFProducer():
 
     def producer(self):
         for bpf_collections in self.attached_bpf:
-            self.queue.put_nowait(bpf_collections)
+            for lang, bpf in bpf_collections.items():
+                data = list(map(lambda kv: (kv[0].clazz.decode('utf-8', 'replace') \
+                                            + "." + \
+                                            kv[0].method.decode('utf-8', 'replace'),
+                                           (kv[1].num_calls, kv[1].total_ns)),
+                            bpf["times"].items()))    
+          
+                syscalls = map(lambda kv: (syscall_name(kv[0].value).decode('utf-8', 'replace'),
+                                       (kv[1].num_calls, kv[1].total_ns)),
+                           bpf["systimes"].items())
+                data.extend(syscalls)
+                result = {'lang': lang, "event": []}
+                for k, v in data:
+                    term = {
+                        lang: {
+                            'function': k,
+                            'call_count': v[0],
+                            'call_time_avg': (v[1]/1000000.0)/v[0],
+                            'call_time_total': (v[1]/1000000.0),
+                        }
+                    } 
+                    result["event"].append(term)
+                if len(result["event"]) > 0:
+                    self.queue.put(result)
+                bpf['systimes'].clear()
+                bpf['times'].clear()
+            
                 
     def render(self, prog, pid, read_class, read_method):
         prog = open(prog, 'r').read()
@@ -57,8 +87,8 @@ class LangBPFProducer():
             .replace("DEFINE_SYSCALLS", '#define SYSCALLS')
 
     def run(self):
-        while True: 
-            self.scheduler.enter(1, 1, self.producer)
-            self.scheduler.run(blocking=True)
-            time.sleep(3)
+        self.gen_prog()
+        while True:
+            self.producer()
+            time.sleep(1)
         
